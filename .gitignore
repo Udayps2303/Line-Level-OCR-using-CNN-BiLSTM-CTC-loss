@@ -1,0 +1,10 @@
+.venv
+{data,models,utils,checkpoints,logs}
+{data,models,utils,scripts,checkpoints,logs}
+checkpoints/best_model.keras
+checkpoints/final_model.keras
+data/charset.txt
+input
+logs/train
+logs/validation
+output

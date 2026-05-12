@@ -1,0 +1,173 @@
+# step 1
+create a "Project" folder and put all the files inside interruption
+
+# step 2 
+in the "Project/input/books/pdf" save all the books pdf in sequence like 1.pdf, 2.pdf, etc... and in
+"Project/input/books/GT" save all book GT's in sequence like 1.txt, 2.txt, ....
+
+# step 3
+now download the HiSAM repo from github and put it inside "Project" folder,
+then download "Project/Hi-SAM/pretrained_checkpoint/line_detection_ctw1500.pth" and 
+"Project/Hi-SAM/pretrained_checkpoint/sam_vit_h_4b8939.pth" and then run x.py to get all line level images(GPU Required)
+
+# step 4
+then run Project/create_final_mapping.py to create mapping file and then run 
+Project/sorting_new_map.py as created map is not map_sorted
+
+# step 5
+Then if you want you can run
+Project/image_preprocessing_VIT.py for seeing the examples of preprocessings can be done
+Project/image_size.py for seeing stats of line images 
+Project/map_stats.py for seeing stats of the mapping file
+Project/Line_extraction_using_teseract.py ( Not Recommended )
+
+# step 6
+Create a conda environment with python 3.10 and install dependencies from "requirements.txt"
+
+# which decoder to use and how to switch
+a) in config.yaml file change between the decoder you want to use.
+b) go through the infer.py and you can see the switches to do for the respective decoder.
+c) use evaluate.py for greedy decoding and evaluate_for_beam.py for beam.
+
+# step 7
+Build the charset 
+run - python utils/build_charset.py --config config.yaml
+
+# step 8
+Start training
+run - python train.py --config config.yaml
+To resume after interruption: run - python train.py --config config.yaml --resume checkpoints/best_model.keras
+
+# step 9
+To Evaluate a trained model on the test set and print CER/WER.
+run - python evaluate.py --config config.yaml --checkpoint checkpoints/best_model.keras
+
+# step 10
+To infer on new unseen image run - 
+# Single image
+python infer.py --image /path/to/new_line.png
+
+# Whole directory of line images
+python infer.py --dir /path/to/new_book_lines/
+this will create multiple predictions so to get the average of all run and before running update the txt file 
+name in the code- python compute_cer_&_wer.py
+
+# my architecture
+064 MB memory:  -> device: 0, name: NVIDIA GeForce RTX 4070 Ti, pci bus id: 0000:01:00.0, compute capability: 8.9
+Model: "OdiaOCR_CNN_BiLSTM_CTC"
+__________________________________________________________________________________________
+ Layer (type)              Output Shape               Param   Connected to                
+                                                       #                                  
+==========================================================================================
+ image (InputLayer)        [(None, None, None, 1)]    0       []                          
+                                                                                          
+ conv_0 (Conv2D)           (None, None, None, 64)     576     ['image[0][0]']             
+                                                                                          
+ bn_0 (BatchNormalization  (None, None, None, 64)     256     ['conv_0[0][0]']            
+ )                                                                                        
+                                                                                          
+ relu_0 (Activation)       (None, None, None, 64)     0       ['bn_0[0][0]']              
+                                                                                          
+ pool_0 (MaxPooling2D)     (None, None, None, 64)     0       ['relu_0[0][0]']            
+                                                                                          
+ conv_1 (Conv2D)           (None, None, None, 128)    73728   ['pool_0[0][0]']            
+                                                                                          
+ bn_1 (BatchNormalization  (None, None, None, 128)    512     ['conv_1[0][0]']            
+ )                                                                                        
+                                                                                          
+ relu_1 (Activation)       (None, None, None, 128)    0       ['bn_1[0][0]']              
+                                                                                          
+ pool_1 (MaxPooling2D)     (None, None, None, 128)    0       ['relu_1[0][0]']            
+                                                                                          
+ conv_2 (Conv2D)           (None, None, None, 256)    29491   ['pool_1[0][0]']            
+                                                      2                                   
+                                                                                          
+ bn_2 (BatchNormalization  (None, None, None, 256)    1024    ['conv_2[0][0]']            
+ )                                                                                        
+                                                                                          
+ relu_2 (Activation)       (None, None, None, 256)    0       ['bn_2[0][0]']              
+                                                                                          
+ pool_2 (MaxPooling2D)     (None, None, None, 256)    0       ['relu_2[0][0]']            
+                                                                                          
+ conv_3 (Conv2D)           (None, None, None, 256)    58982   ['pool_2[0][0]']            
+                                                      4                                   
+                                                                                          
+ bn_3 (BatchNormalization  (None, None, None, 256)    1024    ['conv_3[0][0]']            
+ )                                                                                        
+                                                                                          
+ relu_3 (Activation)       (None, None, None, 256)    0       ['bn_3[0][0]']              
+                                                                                          
+ pool_3 (MaxPooling2D)     (None, None, None, 256)    0       ['relu_3[0][0]']            
+                                                                                          
+ permute (Permute)         (None, None, None, 256)    0       ['pool_3[0][0]']            
+                                                                                          
+ reshape (Reshape)         (None, None, 1024)         0       ['permute[0][0]']           
+                                                                                          
+ bilstm_0 (Bidirectional)  (None, None, 512)          26234   ['reshape[0][0]']           
+                                                      88                                  
+                                                                                          
+ drop_0 (Dropout)          (None, None, 512)          0       ['bilstm_0[0][0]']          
+                                                                                          
+ bilstm_1 (Bidirectional)  (None, None, 512)          15749   ['drop_0[0][0]']            
+                                                      12                                  
+                                                                                          
+ drop_1 (Dropout)          (None, None, 512)          0       ['bilstm_1[0][0]']          
+                                                                                          
+ bilstm_2 (Bidirectional)  (None, None, 512)          15749   ['drop_1[0][0]']            
+                                                      12                                  
+                                                                                          
+ input_length (InputLayer  [(None,)]                  0       []                          
+ )                                                                                        
+                                                                                          
+ label (InputLayer)        [(None, None)]             0       []                          
+                                                                                          
+ label_length (InputLayer  [(None,)]                  0       []                          
+ )                                                                                        
+                                                                                          
+ logits (Dense)            (None, None, 199)          10208   ['bilstm_2[0][0]']          
+                                                      7                                   
+                                                                                          
+==========================================================================================
+Total params: 6837255 (26.08 MB)
+Trainable params: 6835847 (26.08 MB)
+Non-trainable params: 1408 (5.50 KB)
+
+# Final output of train.py, nearly 141min/eppoch and total train time 58.75 hours
+
+22216/22216 [==============================] - 8470s 381ms/step - loss: nan - val_loss: 728.0000 - val_cer: 1.5622
+Epoch 24/100 
+22216/22216 [==============================] - ETA: 0s - loss: nan     
+Epoch 24: val_loss did not improve from 5.44531
+
+  [CER] epoch 24: 1.0000  (500 samples)
+    GT  : ଓଡ଼ିଆତ୍ଘଷୀ ଅଞ୍ଚଳର ଘଟଣା ମେଦି ନୀପୂରଠା ରୂ ବଳିପଡ଼ିଳା ।
+    PRED: 
+
+    GT  : ଏଇ ସବୁ ବଖୀଶିଟି । ନଇଲେ ଏସବୁ କଥା ପିଲାଟା ଜାଣନ୍ତୀ କେମିତି ? ରାଗ ଆଉ
+    PRED: 
+
+    GT  : ଏ ଗାଁରେ ତାଙ୍କର ସ୍ଥିତି ତା'ହେଲେ କେଉଁଠି ?
+    PRED: 
+
+22216/22216 [==============================] - 8476s 382ms/step - loss: nan - val_loss: 737.0000 - val_cer: 1.0000
+Epoch 25/100
+22216/22216 [==============================] - ETA: 0s - loss: nan     
+Epoch 25: val_loss did not improve from 5.44531
+Restoring model weights from the end of the best epoch: 15.
+
+  [CER] epoch 25: 0.0455  (500 samples)
+    GT  : ଓଡ଼ିଆତ୍ଘଷୀ ଅଞ୍ଚଳର ଘଟଣା ମେଦି ନୀପୂରଠା ରୂ ବଳିପଡ଼ିଳା ।
+    PRED: ଓଡ଼ିଆଘଷୀ ଅଞ୍ଚଳର ଘଟଣା ମେଦି ନୀପୂରଠାରୂ ବଳିପଡ଼ିଳା | `
+
+    GT  : ଏଇ ସବୁ ବଖୀଶିଟି । ନଇଲେ ଏସବୁ କଥା ପିଲାଟା ଜାଣନ୍ତୀ କେମିତି ? ରାଗ ଆଉ
+    PRED: ଏଇ ସବୁ ବଖାଣିଚି । ନଇଲେ ଏସବୁ କଥା ପିଲାଟା ଜାଣନ୍ତା କେମିତି ? ରାଗ ଆଉ
+
+    GT  : ଏ ଗାଁରେ ତାଙ୍କର ସ୍ଥିତି ତା'ହେଲେ କେଉଁଠି ?
+    PRED: ଏ ଗାଁରେ ତାଙ୍କର ସ୍ଥିତି ତାଂହେଲେ କେଉଁଠି ?
+
+22216/22216 [==============================] - 8472s 381ms/step - loss: nan - val_loss: 759.0000 - val_cer: 0.0455
+Epoch 25: early stopping
+[INFO] Final model saved: checkpoints/final_model.keras
+[INFO] Training complete.
+
+# After running evaluate.py my model CER : 0.0445 and WER : 0.1813

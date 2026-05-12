@@ -1,0 +1,71 @@
+# ============================================================
+#  Odia Line-Level OCR  —  CNN-BiLSTM-CTC
+#  Configuration File
+# ============================================================
+
+# ── Dataset ─────────────────────────────────────────────────
+dataset:
+  mapping_file: "output/map_sorted.txt"      # relative to odia_ocr/ folder (your output/map_sorted.txt)
+  image_root:   "output"                     # images are at output/OdiaLineLevelDataSet/...
+  charset_file: "data/charset.txt"                                 # auto-generated on first run
+  val_split: 0.05          # 5% validation  (~20,000 lines)
+  test_split: 0.02         # 2% test        (~8,000 lines)
+  max_label_len: 256       # max chars per line (longer lines are skipped)
+
+# ── Image Pre-processing ─────────────────────────────────────
+image:
+  target_height: 64        # fixed height; width is scaled proportionally
+  max_width: 2048          # lines wider than this are centre-cropped
+  channels: 1              # grayscale (converted from RGB)
+  normalize: true          # pixel / 255.0
+
+# ── Augmentation (training only) ─────────────────────────────
+augmentation:
+  enabled: true
+  random_brightness: 0.15
+  random_contrast: 0.15
+  random_noise: true       # Gaussian noise σ ~ U(0, 0.03)
+  elastic_distortion: true # mild elastic warp (word-level distortion)
+  dilation_erosion: true   # simulate ink spread / fade
+  prob: 0.5                # probability of applying any augmentation
+
+# ── Model Architecture ───────────────────────────────────────
+model:
+  # CNN front-end — 4 blocks of Conv→BN→ReLU→MaxPool
+  cnn_filters:    [64, 128, 256, 256]   # filters per block
+  cnn_kernels:    [3,   3,   3,   3]    # square kernel size
+  pool_strides:   [[2,2],[2,2],[2,1],[2,1]]  # (H,W) pool/stride per block
+                                            #  last 2 blocks only halve height
+
+  # BiLSTM stack — 3 bidirectional layers
+  lstm_units:     [256, 256, 256]       # units per direction; output = 2×
+  lstm_dropout:   0.3                   # recurrent dropout inside LSTM
+  inter_layer_dropout: 0.3             # dropout between LSTM layers
+
+  # Output
+  # charset size is inferred at runtime from charset.txt (+ 1 blank for CTC)
+
+# ── Training ─────────────────────────────────────────────────
+training:
+  batch_size: 16            # reduce to 8 if VRAM < 8 GB
+  epochs: 100
+  initial_lr: 1.0e-3
+  lr_schedule: "cosine"     # "cosine" | "reduce_on_plateau"
+  warmup_epochs: 5
+  optimizer: "adam"         # adam with gradient clipping
+  gradient_clip: 5.0
+  early_stopping_patience: 10
+  checkpoint_dir: "checkpoints/"
+  log_dir: "logs/"
+  save_best_only: true
+  mixed_precision: true     # fp16 training — requires CUDA GPU
+
+# ── Inference / Decoding ─────────────────────────────────────
+decode:
+  strategy: "greedy"        # "greedy" | "beam"   (beam needs ctc_beam_search)
+  beam_width: 10            # only used when strategy = "beam"
+
+# ── Evaluation ───────────────────────────────────────────────
+eval:
+  metric: "cer"             # Character Error Rate (primary)
+  also_compute_wer: true
